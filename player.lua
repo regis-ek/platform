@@ -12,14 +12,16 @@ player.sprite = sprites.player_stand
 player.body: setFixedRotation(true)
 
 function playerUpdate(dt)
-	if love.keyboard.isDown("d") then
-		player.body: setX(player.body: getX() + player.speed * dt)
-		player.direction = 1
-	end
+	if gameState == 2 then
+		if love.keyboard.isDown("d") then
+			player.body: setX(player.body: getX() + player.speed * dt)
+			player.direction = 1
+		end
 
-	if love.keyboard.isDown("a") then
-		player.body: setX(player.body: getX() - player.speed * dt)
-		player.direction = -1
+		if love.keyboard.isDown("a") then
+			player.body: setX(player.body: getX() - player.speed * dt)
+			player.direction = -1
+		end
 	end
 
 	if player.grounded == true then

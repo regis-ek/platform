@@ -1,8 +1,10 @@
 function love.load()
 	love.window.setMode(900,700)
-
+	--[[
+	love.graphics.setBackgroundColor(114,214,255)
+	]]
 	myWorld = love.physics.newWorld(0, 500, false) -- normal gravity
-	myWorld: setCallbacks(beginContact, endContact, preSolve, postSolve)
+	myWorld:setCallbacks(beginContact, endContact, preSolve, postSolve)
 
 	sprites = {}
 	sprites.coin_sheet = love.graphics.newImage('sprites/coin_sheet.png')
@@ -11,12 +13,25 @@ function love.load()
 
 	require('player')
 	require('coin')
+	require('show')
 	anim8 = require('anim8-master/anim8')
 	sti = require("Simple-Tiled-Implementation-master/sti")
+	cameraFile = require("hump-master/camera")
+
+	cam = cameraFile()	
+	gameState = 1
+	myFont = love.graphics.newFont(30)
+	timer = 0
+
+	saveData = {}
+	saveData.bestTime = 999
+
+	if love.filesystem.getInfo("data.lua") then
+		local data = love.filesystem.load("data.lua")
+		data()
+	end
 
 	platforms = {}
-	spawnPlatform(50, 400, 300, 30)
-	spawnCoin(200, 100)
 
 	gameMap = sti("gameMap.lua")
 
@@ -37,14 +52,38 @@ function love.update(dt)
 	gameMap: update(dt)
 	coinUpdate(dt)
 
+	cam:lookAt(player.body:getX(), love.graphics.getHeight()/2)
+
 	for i, c in ipairs(coins) do
 		c.animation: update(dt)
+	end
+
+	if gameState == 2 then
+		timer = timer + dt
+	end
+
+	if #coins == 0 and gameState == 2 then
+		gameState = 1
+		player.body:setPosition(100, 100)
+
+		if #coins == 0 then
+			for i, obj in pairs(gameMap.layers["Coins"].objects) do
+				spawnCoin(obj.x, obj.y, obj.width, obj.height)
+			end
+		end
+
+		if timer < saveData.bestTime then
+			saveData.bestTime = math.floor(timer)
+			love.filesystem.write("data.lua", table.show(saveData, "saveData"))
+		end
 	end
 end
 --[[
 
 ]]
 function love.draw()
+	cam:attach()
+
 	gameMap: drawLayer(gameMap.layers["Tile Layer 1"])
 
 	love.graphics.draw(player.sprite, player.body: getX(), player.body: getY(), nil, player.direction, 1, sprites.player_stand:getWidth()/2, sprites.player_stand:getHeight()/2)
@@ -58,12 +97,28 @@ function love.draw()
 		c.animation: draw(sprites.coin_sheet, c.x, c.y, nil, nil, nil, 20.5, 21)
 	end
 
+	cam:detach()
+
+	if gameState == 1 then
+		love.graphics.setFont(myFont)
+		love.graphics.printf("Press any key to begin!", 0, 50, love.graphics.getWidth(), "center")
+		love.graphics.printf("Best time: " .. saveData.bestTime, 0, 150, love.graphics.getWidth(), "center")
+	end
+
+	love.graphics.print("Time: " .. math.floor(timer), 10, 660)
+
 end
 
 function love.keypressed(key, scancode, isrepeat)
 	if key == "w" and player.grounded == true then
-		player.body: applyLinearImpulse(0, -2000)
+		player.body: applyLinearImpulse(0, -3500)
 	end
+
+	if gameState == 1 then
+		gameState = 2
+		timer = 0
+	end
+
 end
 
 function spawnPlatform(x, y, width, height)
